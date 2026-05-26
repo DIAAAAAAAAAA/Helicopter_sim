@@ -1,48 +1,48 @@
-function [dx,y] = state_space_function(t,x,u, Iyy, m_heli, C_pitch, R, L, Kt, Ke, Jm, bm, kq, kt, varargin)
+function [dx,y] = state_space_function(t,x,u,Iyy,K_pitch,m_heli, C_pitch, a, b, c ,d ,varargin)
+%UNTITLED2 Summary of this function goes here
+%   Detailed explanation goes here
+% state definition
+% x(1): theta
+% x(2): theta_dot
+% x(3): phi
+% x(4): phi_dot
 
+% input definition
+% u(1): voltage to pitch motor
+% u(2): voltage to yaw motor
 g = 9.81;
-L_heli = 0.035 ;
-m_cw = 124e-3;
-L_cw = 0.02 ;
+m_cw = 124e-3;      % mass of the load [kg]
+L_cw = 0.02;    % im meters
+L_heli = 0.035; 
 
-% States
-theta     = x(1);
+% extract states
+theta = x(1);
 theta_dot = x(2);
-I         = x(3);
-omega     = x(4);
+I = x(3);
+w = x(4);
+%phi = x(3);
+%phi_dot = x(4);
 
-% Input
-u = u(1);
+% Equation of motion
+% pitch DOF
+d_theta_dot = (K_pitch*u/Iyy) - (m_heli/Iyy)*g*L_heli*cos(theta) - (m_cw/Iyy)*g*L_cw *sin(theta) - (C_pitch / Iyy) * theta_dot;
 
-% Motor electrical
-d_I = (u - R*I - Ke*omega) / L;
+d_I = a * I + b * u;
 
-% Prop torque load (quadratic)
-tau_prop = kq * omega^2;
+d_w = c + d * w;
+% yaw DOF
+%d_phi_dot = (K_yaw*u(2))/(Izz * cos(theta)) + 2 * tan(theta) * theta_dot * phi_dot;
 
-% Motor mechanical
-d_omega = (Kt*I - bm*omega - tau_prop) / Jm;
-d
-
-% Thrust (quadratic)
-T = kt * omega^2;
-
-% Pitch acceleration
-d_theta_dot = (L_heli*T  - m_heli*g*L_heli*cos(theta) - m_cw*g*L_cw*sin(theta) - C_pitch*theta_dot) / Iyy;
-
-% State derivatives
+% Output states
 dx = [theta_dot;
-      d_theta_dot;
-      d_I;
-      d_omega];
+    d_theta_dot;
+    I;
+    d_I;
+    w;
+    d_w];
 
-% Output
-y = theta;
+y = [theta];
 
 
-
-dx = dx(:);
-
-y  = y(:);
 
 end

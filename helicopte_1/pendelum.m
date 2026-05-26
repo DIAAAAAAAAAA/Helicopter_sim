@@ -1,9 +1,9 @@
 time = simout.Time;
 data = simout.Data;
 
-plot(time,data)
+plot(time,data(:,3))
 
-save('simulation_data3.mat','simout')
+save('simulation_data10.mat','simout')
 
 M = [time data];
 
