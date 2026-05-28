@@ -1,4 +1,4 @@
-function [dx,y] = state_space_function(t,x,u,Iyy,m_heli, C_pitch,T_bias, a, b, c ,d,C_T ,varargin)
+function [dx,y] = state_space_function(t,x,u,Iyy,m_heli, C_pitch,T_bias, c, Km, J ,L , R,C_T ,varargin)
 %UNTITLED2 Summary of this function goes here
 %   Detailed explanation goes here
 % state definition
@@ -14,7 +14,7 @@ g = 9.81;
 m_cw = 124e-3;      % mass of the load [kg]
 L_cw = 0.02;    % im meters
 L_heli = 0.035; 
-L_m = 0.2;      % Distance between motor and rotational axis
+L_m = 0.3;      % Distance between motor and rotational axis
 
 % extract states
 theta = x(1);
@@ -31,9 +31,11 @@ T = C_T * w^2;
 d_theta_dot = (T*L_m/Iyy) - (m_heli/Iyy)*g*L_heli*sin(theta) - (m_cw/Iyy)*g*L_cw *sin(theta) - (C_pitch / Iyy) * theta_dot...
     + (T_bias / Iyy);
 
-d_I = a * I + b * u;
 
-d_w = c + d * w^2;
+
+d_I = -R / L * I - Km / L * w  + u / L ;
+
+d_w = Km * I / J - c * w^2 / J;
 % yaw DOF
 %d_phi_dot = (K_yaw*u(2))/(Izz * cos(theta)) + 2 * tan(theta) * theta_dot * phi_dot;
 

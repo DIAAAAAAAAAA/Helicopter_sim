@@ -3,7 +3,7 @@ data = simout.Data;
 
 plot(time,data(:,1))
 
-save('pendelum_data2.mat','simout')
+save('Chirp_down1.mat','simout')
 
 M = [time data];
 
