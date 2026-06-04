@@ -9,7 +9,7 @@ plot(simout.Time,simout.Data(:,1))
 
 g = 9.81;
 
-p_init = [ 0.039857 , 0.795216, 0.0039208,-0.00916309, 0.000612219, 0.0051767, 0.000220079, 0.0148128 , 4.12861, -0.353859]; % Iyy,m_heli, C_pitch,T_bias,c, Km, J ,L , R,C_T
+p_init = [ 0.039857 , 0.795216, 0.0039208,-0.00916309, 0.000612219, 0.0051767, 0.000220079, 0.0148128 , 4.12861, 0.353859]; % Iyy,m_heli, C_pitch,T_bias,c, Km, J ,L , R,C_T
 
 %[2, 4, 2] 
 
@@ -34,31 +34,7 @@ nl_sys.Parameters(2).Fixed = true;  % fix
 nl_sys.Parameters(3).Fixed = true;  % fix 
 nl_sys.Parameters(4).Fixed = true;  % fix 
 
-%{
-% --- Parameter 6: Km (Motor Constant) ---
-nl_sys.Parameters(6).Minimum = 0.005;
-nl_sys.Parameters(6).Maximum = 0.100;
 
-% --- Parameter 7: J (Rotor Inertia) ---
-nl_sys.Parameters(7).Minimum = 1.0e-6;
-nl_sys.Parameters(7).Maximum = 1.0e-3;
-
-% --- Parameter 8: L (Inductance) ---
-nl_sys.Parameters(8).Minimum = 1.0e-4;
-nl_sys.Parameters(8).Maximum = 0.050;
-
-% --- Parameter 9: R (Resistance) ---
-nl_sys.Parameters(9).Minimum = 0.40;
-nl_sys.Parameters(9).Maximum = 5.00;
-
-% --- Parameter 10: C_T (Thrust Coefficient) ---
-% Allow c to go higher if needed
-nl_sys.Parameters(5).Minimum = 1e-7;
-nl_sys.Parameters(5).Maximum = 0.1;   % Increased from 0.001
-
-% Allow C_T to go lower or higher
-nl_sys.Parameters(10).Maximum = 0.1;
-%}
 
 
 
