@@ -44,9 +44,10 @@ samples_per_period = T_period * Fs;
 
 % Remove first period
 start_idx = 2*samples_per_period + 1;
+end_idx = 4 * samples_per_period;
 
-y_trim = simout.Data(start_idx:end-1,1);
-u_trim = V_p(start_idx:end)';
+y_trim = simout.Data(start_idx:end_idx,1);
+u_trim = V_p(start_idx:end_idx)';
 
 % Reshape into 4 periods
 y_matrix = reshape(y_trim, samples_per_period, []);
@@ -107,3 +108,40 @@ nl_sys_estimated = nlgreyest(data, nl_sys, opt);
 
 
 present(nl_sys_estimated);
+
+%% Validation(Using the 5th period)
+
+start_idx_val = 4 * samples_per_period + 1;
+end_idx_val   = 5 * samples_per_period;
+
+y_val = simout.Data(start_idx_val:end_idx_val, 1);
+u_val = V_p(start_idx_val:end_idx_val)';
+
+
+data_val = iddata(y_val, u_val, 1/Fs);
+data_val.Name = 'Helicopter Validation Data (5th Period)';
+data_val.InputName = {'Pitch Voltage'};
+data_val.InputUnit = {'V'};
+data_val.OutputName = {'Theta'};
+data_val.OutputUnit = {'rad'};
+
+%% Model Validation and Comparison
+fprintf('\n--- Running Validation on 5th Period Data ---\n');
+
+
+% Setting initial states
+nl_sys_estimated.InitialStates(1).Value = y_val(1); 
+nl_sys_estimated.InitialStates(1).Fixed = false;    
+
+
+% Plotting the comparsion diagram (Fit Percentage)
+figure('Name', 'Model Validation - 5th Period');
+compare(data_val, nl_sys_estimated);
+grid on;
+title('Model Validation Comparison (5th Period Data)');
+
+
+
+
+
+
