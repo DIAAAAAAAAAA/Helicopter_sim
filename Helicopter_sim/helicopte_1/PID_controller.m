@@ -50,6 +50,7 @@ disp('Linearization of system success！');
 figure
 pzplot(sys_linear)
 
+Ts = 0.01;
 
 %%
 % --- 连续时间 MPC 设计 ---
@@ -96,3 +97,33 @@ stairs(t_d, r, 'r--');
 legend('离散 MPC 输出', '目标值');
 title('离散域阶跃响应');
 
+% --- Parameters ---
+Fs = 1/Ts;                  % Sampling frequency (Hz)
+T_total = 160;               % Total duration of the signal (seconds)
+period = 40;                 % Period of the step signal (seconds)
+duty_cycle = 50;            % Percentage of the period the signal is "High" (0-100)
+amplitude = 0.4;              % Amplitude of the step
+
+% --- Signal Generation ---
+t = (0:1/Fs:T_total)';      % Time vector (column vector)
+
+% Calculate the repeating square/step wave
+% square() returns values between -1 and 1, so we normalize it to 0 and 1
+raw_pulse = (square(2 * pi * (1/period) * t, duty_cycle) + 1) / 2;
+
+% Apply amplitude
+y = amplitude * raw_pulse;
+
+% --- Format for Simulink (Timeseries Object) ---
+% Simulink's "From Workspace" block reads this format perfectly
+periodic_step_signal = timeseries(y, t);
+periodic_step_signal.Name = 'Periodic Step Signal';
+
+% --- Plot to Verify ---
+figure;
+plot(t, y, 'LineWidth', 2);
+grid on;
+ylim([-0.5, amplitude + 0.5]);
+title('Periodic Step Signal');
+xlabel('Time (seconds)');
+ylabel('Amplitude');
