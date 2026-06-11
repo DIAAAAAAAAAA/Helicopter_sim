@@ -178,6 +178,3 @@ else
     grid on;
     title('Discrete Closed-Loop Pole Distribution');
 end
-
-
-
