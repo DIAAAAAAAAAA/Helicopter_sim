@@ -114,6 +114,9 @@ sys_cl = connect(sys_plant, sys_ctrl, sum_node, meas_node, 'r', 'y');
 cl_poles = eig(sys_cl);
 disp('Closed-loop system poles:');
 disp(cl_poles);
+figure
+pzplot(sys_cl);
+
 
 if all(real(cl_poles) < 0)
     disp('Verification passed: All closed-loop poles are in the left-half plane. The system is stable!');
