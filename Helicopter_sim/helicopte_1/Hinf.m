@@ -86,9 +86,9 @@ fprintf('Observability rank   = %d\n', rank(Ob));
 % S = E/R = 1/(1+GK)
 s = tf('s');
 
-M    = 6.0;     % less aggressive than 1.5
-wb   = 0.05;     % target tracking bandwidth [rad/s]
-Aerr = 0.06;    % low-frequency tracking requirement (relaxed)
+M    = 2.2;     % less aggressive than 1.5
+wb   = 2;     % target tracking bandwidth [rad/s]
+Aerr = 0.003;    % low-frequency tracking requirement (relaxed)
 
 Wr = (s/M + wb)/(s + wb*Aerr);
 
