@@ -86,14 +86,14 @@ fprintf('Observability rank   = %d\n', rank(Ob));
 % S = E/R = 1/(1+GK)
 s = tf('s');
 
-M    = 2.0;     % less aggressive than 1.5
-wb   = 1.5;     % target tracking bandwidth [rad/s]
-Aerr = 0.02;    % low-frequency tracking requirement (relaxed)
+M    = 6.0;     % less aggressive than 1.5
+wb   = 0.05;     % target tracking bandwidth [rad/s]
+Aerr = 0.06;    % low-frequency tracking requirement (relaxed)
 
 Wr = (s/M + wb)/(s + wb*Aerr);
 
 % Small control regularization (recommended)
-W2 = 0.05;
+W2 = 0.1;
 
 disp('Tracking weighting filter Wr(s) = ');
 Wr
