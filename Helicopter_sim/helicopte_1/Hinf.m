@@ -72,7 +72,7 @@ wb = 4;       % target bandwidth [rad/s]
 Aperf = 1e-3; % low-frequency tracking requirement
 
 W1 = (s/M + wb)/(s + wb*Aperf);  % tracking / disturbance rejection
-W2 = 0.2;                        % control activity penalty
+W2 = 2.5;                        % control activity penalty
 W3 = makeweight(0.01, 30, 10);   % high-frequency robustness/noise attenuation
 
 % Synthesize H-infinity controllersss
