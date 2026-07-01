@@ -1,0 +1,252 @@
+%% 1. Getting model parameters
+p = getpvec(nl_sys_estimated); 
+
+%% 2. Solving equilibrium point (x0, u0)
+% dx = 0 and theta = 0
+% Define an optimization goal，using current state_space_function
+objective = @(p_in) [state_space_function(0, p_in(1:4), p_in(5), ...
+    p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10)); p_in(1)];
+
+% Setting initial guess
+x0_guess = [0; 0; 0; 0; 0]; 
+
+% Solving the equilibrium point
+options = optimoptions('fsolve', 'Display', 'off');
+[sol, ~, exitflag] = fsolve(objective, x0_guess, options);
+
+x0 = sol(1:4); % Equilibrium state
+u0 = sol(5);   % Balancing voltage
+
+fprintf('Equilibrium point solving finished：\n');
+fprintf('Theta: %.4f, Theta_dot: %.4f, I: %.4f, w: %.4f\n', x0(1), x0(2), x0(3), x0(4));
+fprintf('Voltage needed u0: %.4f\n', u0);
+
+%% 3. linearization (Constructing A and B)
+
+h = 1e-4; % differential step length
+A = zeros(4,4);
+B = zeros(4,1);
+
+% Differential calculation of A matrix
+for i = 1:4
+    x_plus = x0; x_plus(i) = x_plus(i) + h;
+    x_minus = x0; x_minus(i) = x_minus(i) - h;
+    [dx_p, ~] = state_space_function(0, x_plus, u0, p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10));
+    [dx_m, ~] = state_space_function(0, x_minus, u0, p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10));
+    A(:, i) = (dx_p - dx_m) / (2*h);
+end
+
+%Differential calculation of B matrix
+[dx_p, ~] = state_space_function(0, x0, u0 + h, p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10));
+[dx_m, ~] = state_space_function(0, x0, u0 - h, p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8), p(9), p(10));
+B = (dx_p - dx_m) / (2*h);
+
+C = [1 0 0 0]; % Output is theta
+D = 0;
+
+sys_linear = ss(A, B, C, D);
+disp('Linearization of system success！');
+
+figure
+pzplot(sys_linear)
+
+
+%% Controller initialization
+C_p     = tf(1,1); 
+C_i     = tf(1,1); 
+C_d     = tf(1,1); 
+omega_l = tf(1,1); 
+C_f     = tf(1,1); 
+
+% Reference model
+freq_ref = 3;
+flag = 1;
+switch flag
+    case 0
+        zeta_ref = 0.77970327;    % 2% settling time
+    case 1
+        zeta_ref = 0.69019672;    % 5% settling time
+end
+T_ref = tf(freq_ref^2,[1 2*zeta_ref*freq_ref freq_ref^2]);
+
+% Reference model step response
+flag1 = 1;
+switch flag1
+    case 0
+    case 1
+        h0 = stepplot(T_ref,linspace(0,10,1e4)); grid on
+        h0.Characteristics.SettlingTime.Visible = 'on';
+        h0.Characteristics.SettlingTime.Threshold = 0.05;
+end
+
+% Frequency domain requirments
+freq_gc_actuator = 20;
+freq_gc_sensor1 = 12.45;
+
+% Input disturbance rejection attenuation
+atten_SoG = db2mag(-14.65); 
+
+% Input disturbance rejection bandwidth factors
+factor_freq_Si_ref = 1.85;
+factor_freq_Ti_ref = 0.6405;
+
+% Model matching control signal bandwidth factor
+factor_freq_CSo_y1_ref = 0.146;
+
+% Classical margins
+PM_i = 30;
+PM_o1 = 30;
+PM_o2 = 30;
+GM_i  = mag2db(1/(2*sin((PM_i*pi/180)/2)))/(1/(2*sin((PM_i*pi/180)/2))-1);   %(dB)
+GM_o1 = mag2db(1/(2*sin((PM_o1*pi/180)/2)))/(1/(2*sin((PM_o1*pi/180)/2))-1); % (dB)
+GM_o2 = mag2db(1/(2*sin((PM_o2*pi/180)/2)))/(1/(2*sin((PM_o2*pi/180)/2))-1); % (dB)
+% Border values
+low_gain  = db2mag(-60);
+low_gain1 = db2mag(-30);
+high_gain = db2mag(+60);
+
+
+%% Weighting filters
+
+% So_e_ref 
+dcgain_So_ref = low_gain;
+freq_So_ref = freq_ref;
+mag_So_ref = db2mag(0);
+hfgain_So_ref = 1/(2*sin((PM_o1*pi/180)/2));
+
+% CS_u_n(from noise to input) control sensitivity
+dcgain_CSo_u_n  = high_gain;
+freq_CSo_u_n    = 3.2; 
+mag_CSo_u_n     = db2mag(0);
+hfgain_CSo_u_n  = low_gain;
+
+% Co sensitivity To_y_ref
+dcgain_To_y_n   = high_gain;
+freq_To_y_n     = 4;   
+mag_To_y_n      = low_gain1;
+hfgain_To_y_n   = low_gain;
+
+% Desired CL sensitivities
+So_e_ref = makeweight(dcgain_So_ref,[freq_So_ref mag_So_ref],hfgain_So_ref);
+CSo_u_n = makeweight(dcgain_CSo_u_n,[freq_CSo_u_n mag_CSo_u_n],hfgain_CSo_u_n);
+To_y_n = makeweight(dcgain_To_y_n,[freq_To_y_n mag_To_y_n],hfgain_To_y_n);
+
+% Weighting filters
+W_So_e_ref = inv(So_e_ref);
+W_CSo_u_n = inv(CSo_u_n);
+W_To_y_n = inv(To_y_n);
+
+
+%% Control system design
+
+% Create slTuner interface
+% Tunable blocks
+TunedBlocks = {'H_inf_simulink/Proportional Controller';...
+    'H_inf_simulink/Integral Controller';...
+    'H_inf_simulink/Derivative Controller';...
+    'H_inf_simulink/Feedforward Controller';};
+
+%Analysis points
+AnalysisPoints = {'H_inf_simulink/Reference/r'; 'H_inf_simulink/Sum_ref/e_ref';...
+    'H_inf_simulink/Noise/n';'H_inf_simulink/Sum_d_i/u_p';...
+    'H_inf_simulink/Sum_d_o/y'; 'H_inf_simulink/Sum_Cd/C_d_input';...
+    'H_inf_simulink/Derivative Controller/C_d_output'};
+
+% slTuner options
+Options_slTuner     = slTunerOptions;
+Options_slTuner.AreParamsTunable = 'off';
+% slTuner object
+CL0 = slTuner('H_inf_simulink',TunedBlocks, AnalysisPoints, Options_slTuner);
+
+% Tunable controllers
+% Proportional
+C0_p = tunableTF('C_p',0,0);
+C0_p.Numerator.Free = 0;
+setBlockParam(CL0,'H_inf_simulink/Proportional Controller',C0_p);
+
+% Integral
+C0_i = tunablePID('C_i','PI');
+setBlockParam(CL0,'H_inf_simulink/Integral Controller',C0_i);
+
+% Derivative
+C0_d = tunableTF('C_d',0,0);
+setBlockParam(CL0,'H_inf_simulink/Derivative Controller',C0_d);
+
+% Feedforward
+C0_f = tunableTF('C_f',1,1);
+setBlockParam(CL0,'H_inf_simulink/Feedforward Controller',C0_f);
+
+%% Tuning goals
+
+% Goal So_e_ref
+Inputs = {'H_inf_simulink/Reference/r'};
+Outputs = {'H_inf_simulink/Sum_ref/e_ref'};
+% Tuning goal specifications
+WL = W_So_e_ref;
+WR = 1;
+% Create tuning goal for weighted gain
+Goal_So = TuningGoal.WeightedGain(Inputs,Outputs,WL,WR);
+Goal_So.Name = 'Goal_So';
+
+% Goal CSo_u_n
+Inputs = {'H_inf_simulink/Noise/n'};
+Outputs = {'H_inf_simulink/Sum_d_i/u_p'};
+% Tuning goal specifications
+WL = W_CSo_u_n;
+WR = 1;
+% Create tuning goal for weighted gain
+Goal_CSo_u_n = TuningGoal.WeightedGain(Inputs,Outputs,WL,WR);
+Goal_CSo_u_n.Name = 'Goal_CSo';
+
+
+% Goal To_y_n
+Inputs = {'H_inf_simulink/Reference/r'};
+Outputs = {'H_inf_simulink/Sum_d_o/y'};
+% Tuning goal specifications
+WL = W_To_y_n;
+WR = 1;
+% Create tuning goal for weighted gain
+Goal_To_y_ref = TuningGoal.WeightedGain(Inputs,Outputs,WL,WR);
+Goal_To_y_ref.Name = 'Goal_To';
+
+
+Goal_Kd_Limit = TuningGoal.MaxGain('C_d_output', 'C_d_input', 0.1);
+
+
+
+%% Optimization of the close loop
+SoftGoals = [Goal_To_y_ref; Goal_CSo_u_n];
+HardGoals = [Goal_So,Goal_Kd_Limit];
+
+% Tune the controllers %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parallel computing setup
+p        = gcp('nocreate');
+numCores = feature('numcores');
+if isempty(p)
+    parpool('local', 2);
+end
+
+% systune options
+Options_systune = systuneOptions();
+Options_systune.Display = 'off';
+Options_systune.MaxIter = 1000;
+Options_systune.RandomStart = numCores - 1;
+Options_systune.UseParallel = 1;                % Parallel processing flag
+Options_systune.SoftTarget  = 0;
+Options_systune.SoftTol     = 1e-5;             % Increase from 1e-3
+Options_systune.SoftScale   = 1;
+Options_systune.MinDecay    = 1e-7;
+Options_systune.MaxRadius   = 1e+3;             % Decreased from 1e8
+
+% Call systune
+[CL,fSoft,gHard,Info] = systune(CL0,SoftGoals,HardGoals,Options_systune);
+
+% Controller values
+C_p = getTunedValue(CL,'C_p');
+C_i = getTunedValue(CL,'C_i');
+C_d = getTunedValue(CL,'C_d');
+C_f = getTunedValue(CL,'C_f');
+
+% Total controller
+C_ffd = C_i * C_f;
+C_fbk = -[C_p+C_i C_d];

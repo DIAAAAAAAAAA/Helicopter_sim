@@ -1,0 +1,10 @@
+time = simout.Time;
+data = simout.Data;
+
+plot(time,data(:,1))
+
+save('Chirp_down1.mat','simout')
+
+M = [time data];
+
+writematrix(M,'simout.csv')
